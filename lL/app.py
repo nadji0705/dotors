@@ -547,4 +547,5 @@ def view_medical_image(image_id):
     return render_template('view_image.html', image=medical_image)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000,debug=True)
+
