@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}عرض الصورة الطبية{% endblock %}
+
+{% block content %}
+<div class="image-viewer-container">
+    <a href="{{ url_for('get_post', post_id=image.post_id) }}" class="back-link">
+        <i class="fas fa-arrow-right"></i> العودة إلى المنشور
+    </a>
+    
+    <div class="image-viewer">
+        <div class="image-header">
+            <h2><i class="fas fa-file-medical-alt"></i> {{ image.original_filename }}</h2>
+            <div class="image-meta">
+                <span><i class="fas fa-file"></i> نوع الملف: {{ image.file_type }}</span>
+                <span><i class="fas fa-weight"></i> الحجم: {{ (image.file_size / 1024 / 1024)|round(2) }} MB</span>
+                <span><i class="far fa-calendar"></i> تاريخ الرفع: {{ image.upload_date.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+        </div>
+        
+        <div class="image-content">
+            {% if image.file_type in ['DICOM', 'NIFTI', 'NIFTI_GZ'] %}
+            <div class="dicom-viewer">
+                <div class="viewer-controls">
+                    <button class="btn btn-outline" id="prevSlice">
+                        <i class="fas fa-chevron-right"></i> شريحة سابقة
+                    </button>
+                    <span id="sliceInfo">الشريحة: <span id="currentSlice">0</span> / <span id="totalSlices">0</span></span>
+                    <button class="btn btn-outline" id="nextSlice">
+                        شريحة تالية <i class="fas fa-chevron-left"></i>
+                    </button>
+                    
+                    <div class="contrast-controls">
+                        <label for="contrast">التباين:</label>
+                        <input type="range" id="contrast" min="0" max="200" value="100">
+                        
+                        <label for="brightness">السطوع:</label>
+                        <input type="range" id="brightness" min="0" max="200" value="100">
+                    </div>
+                </div>
+                
+                <div class="image-container">
+                    <canvas id="dicomCanvas"></canvas>
+                    <div class="loading" id="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        جاري تحميل الصورة...
+                    </div>
+                </div>
+                
+                <div class="dicom-info">
+                    <h4><i class="fas fa-info-circle"></i> معلومات DICOM</h4>
+                    <div id="dicomMetadata"></div>
+                </div>
+            </div>
+            {% else %}
+            <div class="standard-image">
+                <img src="{{ url_for('static', filename='uploads/medical_images/' + image.filename) }}" 
+                     alt="{{ image.original_filename }}"
+                     class="medical-image">
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="image-tools">
+            <a href="{{ url_for('static', filename='uploads/medical_images/' + image.filename) }}" 
+               class="btn btn-outline" download>
+                <i class="fas fa-download"></i> تحميل الملف الأصلي
+            </a>
+            
+            <button class="btn btn-outline" onclick="window.print()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+            
+            <button class="btn btn-outline" id="zoomIn">
+                <i class="fas fa-search-plus"></i> تكبير
+            </button>
+            
+            <button class="btn btn-outline" id="zoomOut">
+                <i class="fas fa-search-minus"></i> تصغير
+            </button>
+            
+            <button class="btn btn-outline" id="resetView">
+                <i class="fas fa-redo"></i> إعادة تعيين
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if image.file_type in ['DICOM', 'NIFTI', 'NIFTI_GZ'] %}
+    loadDICOMViewer();
+    {% else %}
+    setupStandardImageViewer();
+    {% endif %}
+});
+
+function loadDICOMViewer() {
+    const canvas = document.getElementById('dicomCanvas');
+    const ctx = canvas.getContext('2d');
+    const loading = document.getElementById('loading');
+    
+    // جلب بيانات الصورة
+    fetch(`/api/image/{{ image.id }}/slices`)
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            // هنا سيتم تحميل وعرض شرائح DICOM
+            console.log('DICOM data loaded:', data);
+        })
+        .catch(error => {
+            loading.innerHTML = '<i class="fas fa-exclamation-triangle"></i> خطأ في تحميل الصورة';
+            console.error('Error loading DICOM:', error);
+        });
+}
+
+function setupStandardImageViewer() {
+    const image = document.querySelector('.medical-image');
+    let zoomLevel = 1;
+    
+    document.getElementById('zoomIn').addEventListener('click', function() {
+        zoomLevel += 0.1;
+        image.style.transform = `scale(${zoomLevel})`;
+    });
+    
+    document.getElementById('zoomOut').addEventListener('click', function() {
+        if (zoomLevel > 0.2) {
+            zoomLevel -= 0.1;
+            image.style.transform = `scale(${zoomLevel})`;
+        }
+    });
+    
+    document.getElementById('resetView').addEventListener('click', function() {
+        zoomLevel = 1;
+        image.style.transform = 'scale(1)';
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة تحكم تقني الأشعة{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-user-nurse"></i> لوحة تحكم تقني الأشعة</h1>
+        <p>مرحباً {{ user.first_name }}، هنا يمكنك نشر استفساراتك ومتابعة ردود الأطباء</p>
+    </div>
+    
+    <div class="dashboard-content">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-plus-circle"></i> نشر استفسار جديد</h3>
+            </div>
+            <div class="card-body">
+                <form id="newPostForm" class="post-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="postTitle"><i class="fas fa-heading"></i> عنوان الاستفسار *</label>
+                            <input type="text" id="postTitle" name="title" required placeholder="أدخل عنواناً واضحاً للاستفسار">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="postCategory"><i class="fas fa-tag"></i> التصنيف *</label>
+                            <select id="postCategory" name="category" required>
+                                <option value="">اختر تصنيفاً</option>
+                                <option value="emergency">حالة طارئة</option>
+                                <option value="medication">استفسار دوائي</option>
+                                <option value="procedure">إجراء طبي</option>
+                                <option value="symptoms">تفسير أعراض</option>
+                                <option value="equipment">استخدام معدات</option>
+                                <option value="other">أخرى</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="postUrgency"><i class="fas fa-exclamation-triangle"></i> مستوى الأهمية *</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="urgency" value="low">
+                                    <span class="radio-custom"></span>
+                                    منخفض
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="urgency" value="normal" checked>
+                                    <span class="radio-custom"></span>
+                                    عادي
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="urgency" value="high">
+                                    <span class="radio-custom"></span>
+                                    عالٍ
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="urgency" value="critical">
+                                    <span class="radio-custom"></span>
+                                    حرج
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="postContent"><i class="fas fa-edit"></i> تفاصيل الاستفسار *</label>
+                        <textarea id="postContent" name="content" rows="6" required placeholder="صف الاستفسار بالتفصيل، مع ذكر المعلومات المهمة مثل التاريخ الطبي والحالة الحالية والأعراض..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="medicalImages"><i class="fas fa-file-medical-alt"></i> رفع صور طبية (اختياري)</label>
+                        <div class="file-upload-area">
+                            <input type="file" 
+                                   id="medicalImages" 
+                                   name="medical_images[]" 
+                                   accept=".dcm,.nii,.nii.gz,.png,.jpg,.jpeg"
+                                   multiple
+                                   style="display: none;">
+                            
+                            <div class="upload-dropzone" id="uploadDropzone">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>اسحب وأفلت الصور هنا أو انقر للاختيار</p>
+                                <p class="upload-hint">
+                                    الصيغ المدعومة: DICOM (.dcm), NIFTI (.nii, .nii.gz), PNG, JPG
+                                    <br>الحد الأقصى: 50MB لكل ملف
+                                </p>
+                            </div>
+                            
+                            <div class="file-list" id="fileList">
+                                <!-- ستظهر الملفات المختارة هنا -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> نشر الاستفسار
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-history"></i> استفساراتي السابقة</h3>
+            </div>
+            <div class="card-body">
+                {% if posts %}
+                    <div class="posts-list">
+                        {% for post in posts %}
+                        <div class="post-item {% if post.urgency == 'critical' %}critical{% elif post.urgency == 'high' %}high{% elif post.urgency == 'low' %}low{% endif %}">
+                            <div class="post-header">
+                                <div class="post-title">
+                                    <h4>{{ post.title }}</h4>
+                                    <span class="post-category">{{ post.category }}</span>
+                                    <span class="post-urgency urgency-{{ post.urgency }}">{{ post.urgency }}</span>
+                                </div>
+                                <div class="post-meta">
+                                    <span><i class="far fa-calendar"></i> {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    <span><i class="far fa-comment"></i> {{ post.replies|length }} ردود</span>
+                                    {% if post.medical_images %}
+                                    <span><i class="fas fa-images"></i> {{ post.medical_images|length }} صور</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="post-content">
+                                <p>{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
+                            </div>
+                            <div class="post-actions">
+                                <a href="{{ url_for('get_post', post_id=post.id) }}" class="btn btn-outline">
+                                    <i class="fas fa-eye"></i> عرض التفاصيل والردود
+                                </a>
+                                {% if post.medical_images %}
+                                <button class="btn btn-outline view-images-btn" data-post-id="{{ post.id }}">
+                                    <i class="fas fa-images"></i> عرض الصور ({{ post.medical_images|length }})
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>لا توجد استفسارات منشورة حتى الآن</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const newPostForm = document.getElementById('newPostForm');
+    
+    // تهيئة خاصية رفع الملفات
+    initFileUpload();
+    
+    newPostForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        // إضافة الملفات إلى FormData
+        const filesInput = document.getElementById('medicalImages');
+        for (let i = 0; i < filesInput.files.length; i++) {
+            formData.append('medical_images[]', filesInput.files[i]);
+        }
+        
+        try {
+            const response = await fetch('/create_post', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(result.message || 'تم نشر الاستفسار بنجاح!');
+                newPostForm.reset();
+                clearFileList();
+                // إعادة تحميل الصفحة لعرض المنشور الجديد
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('حدث خطأ: ' + result.error);
+            }
+        } catch (error) {
+            alert('حدث خطأ في الشبكة. حاول مرة أخرى.');
+        }
+    });
+    
+    // إضافة مستمعين لأزرار عرض الصور
+    document.querySelectorAll('.view-images-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const postId = this.dataset.postId;
+            openImageGallery(postId);
+        });
+    });
+});
+
+// دوال رفع الملفات
+function initFileUpload() {
+    const dropzone = document.getElementById('uploadDropzone');
+    const fileInput = document.getElementById('medicalImages');
+    const fileList = document.getElementById('fileList');
+    
+    if (!dropzone || !fileInput || !fileList) return;
+    
+    // عند النقر على منطقة الرفع
+    dropzone.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // عند اختيار ملفات
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+    
+    // دعم السحب والإفلات
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.style.backgroundColor = 'rgba(42, 157, 143, 0.15)';
+        dropzone.style.borderColor = '#21867a';
+    });
+    
+    dropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropzone.style.backgroundColor = '';
+        dropzone.style.borderColor = '';
+    });
+    
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.style.backgroundColor = '';
+        dropzone.style.borderColor = '';
+        
+        if (e.dataTransfer.files.length) {
+            handleFiles(e.dataTransfer.files);
+        }
+    });
+    
+    function handleFiles(files) {
+        const maxSize = 50 * 1024 * 1024; // 50MB
+        const allowedTypes = ['dcm', 'nii', 'gz', 'png', 'jpg', 'jpeg'];
+        
+        for (let file of files) {
+            // التحقق من النوع
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(extension)) {
+                showToast(`نوع الملف غير مدعوم: ${file.name}`, 'error');
+                continue;
+            }
+            
+            // التحقق من الحجم
+            if (file.size > maxSize) {
+                showToast(`الملف كبير جداً: ${file.name} (الحد الأقصى 50MB)`, 'error');
+                continue;
+            }
+            
+            // إضافة الملف للقائمة
+            addFileToList(file);
+        }
+    }
+    
+    function addFileToList(file) {
+        const fileId = 'file_' + Date.now() + Math.random().toString(36).substr(2, 9);
+        const fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+        
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.id = fileId;
+        fileItem.dataset.file = file.name;
+        
+        fileItem.innerHTML = `
+            <div class="file-info">
+                <i class="fas fa-file-medical-alt file-icon"></i>
+                <div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+            </div>
+            <button type="button" class="file-remove" onclick="removeFile('${fileId}')">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        fileList.appendChild(fileItem);
+    }
+}
+
+// إزالة ملف من القائمة
+function removeFile(fileId) {
+    const fileItem = document.getElementById(fileId);
+    if (fileItem) {
+        fileItem.remove();
+    }
+}
+
+// مسح قائمة الملفات
+function clearFileList() {
+    const fileList = document.getElementById('fileList');
+    if (fileList) {
+        fileList.innerHTML = '';
+    }
+    const fileInput = document.getElementById('medicalImages');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+}
+
+// عرض معرض الصور
+function openImageGallery(postId) {
+    fetch(`/api/post/${postId}/images`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('فشل في تحميل الصور');
+            }
+            return response.json();
+        })
+        .then(images => {
+            if (images.length > 0) {
+                showImageGalleryModal(images);
+            } else {
+                showToast('لا توجد صور لذا المنشور', 'info');
+            }
+        })
+        .catch(error => {
+            showToast('حدث خطأ في تحميل الصور', 'error');
+            console.error('Error loading images:', error);
+        });
+}
+
+function showImageGalleryModal(images) {
+    // إنشاء عنصر المعرض
+    const galleryModal = document.createElement('div');
+    galleryModal.className = 'gallery-modal';
+    galleryModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.9);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    // إنشاء محتوى المعرض
+    let imagesHTML = '';
+    images.forEach(img => {
+        const imageUrl = img.preview_url || img.url;
+        imagesHTML += `
+            <div class="gallery-item" style="margin: 10px; text-align: center;">
+                <img src="${imageUrl}" 
+                     alt="${img.original_filename}"
+                     style="max-width: 300px; max-height: 250px; object-fit: contain; border-radius: 8px; cursor: pointer;"
+                     onclick="window.open('${img.url}', '_blank')">
+                <div style="color: white; margin-top: 10px; font-size: 0.9rem;">
+                    ${img.original_filename}
+                </div>
+            </div>
+        `;
+    });
+    
+    galleryModal.innerHTML = `
+        <div style="width: 100%; max-width: 1200px; background: rgba(0,0,0,0.8); border-radius: 10px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #444;">
+                <h3 style="color: white; margin: 0;">الصور الطبية (${images.length})</h3>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                        style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 5px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
+                ${imagesHTML}
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                        style="background: #2a9d8f; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(galleryModal);
+    
+    // إغلاق بالنقر خارج المحتوى
+    galleryModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.remove();
+        }
+    });
+    
+    // إغلاق بالزر ESC
+    const closeOnEsc = function(e) {
+        if (e.key === 'Escape') {
+            galleryModal.remove();
+            document.removeEventListener('keydown', closeOnEsc);
+        }
+    };
+    document.addEventListener('keydown', closeOnEsc);
+}
+
+// دالة لعرض رسائل التنبيه
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : '#d1ecf1'};
+        color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : '#0c5460'};
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideDown 0.3s ease;
+        border: 1px solid ${type === 'error' ? '#f5c6cb' : type === 'success' ? '#c3e6cb' : '#bee5eb'};
+        font-family: 'Cairo', sans-serif;
+        font-weight: 500;
+        text-align: center;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideUp 0.3s ease';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 5000);
+}
+
+// إضافة أنماط animation للـ toast إذا لم تكن موجودة
+if (!document.querySelector('#toast-styles')) {
+    const style = document.createElement('style');
+    style.id = 'toast-styles';
+    style.textContent = `
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translate(-50%, 0); opacity: 1; }
+            to { transform: translate(-50%, -100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+</script>
+
+<style>
+/* تنسيقات رفع الملفات */
+.file-upload-area {
+    margin-top: 10px;
+}
+
+.upload-dropzone {
+    border: 2px dashed #2a9d8f;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: rgba(42, 157, 143, 0.05);
+}
+
+.upload-dropzone:hover {
+    background-color: rgba(42, 157, 143, 0.1);
+    border-color: #21867a;
+}
+
+.upload-dropzone i {
+    font-size: 3rem;
+    color: #2a9d8f;
+    margin-bottom: 15px;
+}
+
+.upload-dropzone p {
+    margin: 10px 0;
+    color: #264653;
+    font-weight: 500;
+}
+
+.upload-hint {
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.file-list {
+    margin-top: 20px;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-icon {
+    color: #2a9d8f;
+    font-size: 1.2rem;
+}
+
+.file-name {
+    font-weight: 500;
+    color: #264653;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-size {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.file-remove {
+    background: none;
+    border: none;
+    color: #e76f51;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.file-remove:hover {
+    background-color: rgba(231, 111, 81, 0.1);
+}
+
+/* تحسينات للعرض على الجوال */
+@media (max-width: 768px) {
+    .upload-dropzone {
+        padding: 25px 15px;
+    }
+    
+    .upload-dropzone i {
+        font-size: 2.5rem;
+    }
+    
+    .file-name {
+        max-width: 200px;
+    }
+    
+    .gallery-modal > div {
+        padding: 15px;
+        max-width: 95%;
+    }
+}
+</style>
+{% endblock %}

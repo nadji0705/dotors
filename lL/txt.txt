@@ -1,0 +1,20 @@
+
+
+
+
+   # إنشاء بيئة افتراضية
+python -m venv venv
+
+# تفعيل البيئة في Windows
+venv\Scripts\activate
+
+# ثم تثبيت المتطلبات
+pip install -r requirements.txt
+
+
+pip install Pillow
+pip install pydicom
+pip install nibabel
+
+
+python app.py

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة تحكم الطبيب{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-user-md"></i> لوحة تحكم الطبيب</h1>
+        <p>مرحباً {{ session.get('name') }}، هنا يمكنك الرد على استفسارات تقنيي الأشعة</p>
+    </div>
+    
+    <div class="dashboard-content">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-question-circle"></i> استفسارات تقنيي الأشعة</h3>
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">الكل</button>
+                    <button class="filter-btn" data-filter="unanswered">غير مجابة</button>
+                    <button class="filter-btn" data-filter="answered">مجابة</button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if posts %}
+                    <div class="posts-list">
+                        {% for post in posts %}
+                        <div class="post-item doctor-post {% if post.urgency == 'critical' %}critical{% elif post.urgency == 'high' %}high{% elif post.urgency == 'low' %}low{% endif %}" 
+                             data-answered="{% if post.replies|length > 0 %}true{% else %}false{% endif %}">
+                            <div class="post-header">
+                                <div class="post-title">
+                                    <h4>{{ post.title }}</h4>
+                                    <span class="post-category">{{ post.category }}</span>
+                                    <span class="post-urgency urgency-{{ post.urgency }}">{{ post.urgency }}</span>
+                                </div>
+                                <div class="post-meta">
+                                    <span><i class="far fa-user"></i> {{ post.author.first_name }} {{ post.author.last_name }}</span>
+                                    <span><i class="far fa-calendar"></i> {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    <span><i class="far fa-comment"></i> {{ post.replies|length }} ردود</span>
+                                    
+                                    
+                                    {% if post.medical_images %}
+                                    <span><i class="fas fa-images"></i> {{ post.medical_images|length }} صور</span>
+                                    {% endif %}
+                                </div>
+                                
+                            </div>
+                            <div class="post-content">
+                                <p>{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
+                            </div>
+                            <div class="post-actions">
+                                <a href="{{ url_for('get_post', post_id=post.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-reply"></i> الرد على الاستفسار
+                                </a>
+                                {% if post.replies|length > 0 %}
+                                <span class="answered-badge"><i class="fas fa-check-circle"></i> تم الرد</span>
+                                {% else %}
+                                <span class="unanswered-badge"><i class="fas fa-clock"></i> يحتاج رد</span>
+                                {% endif %}
+
+                                 {% if post.medical_images %}
+                                <button class="btn btn-outline view-images-btn" data-post-id="{{ post.id }}">
+                                    <i class="fas fa-images"></i> عرض الصور ({{ post.medical_images|length }})
+                                </button>
+                                {% endif %}
+
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>لا توجد استفسارات من تقني الأشعة حتى الآن</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const postItems = document.querySelectorAll('.doctor-post');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // إزالة النشط من جميع الأزرار
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            // إضافة النشط للزر المحدد
+            this.classList.add('active');
+            
+            const filter = this.dataset.filter;
+            
+            // تصفية المنشورات
+            postItems.forEach(post => {
+                const isAnswered = post.dataset.answered === 'true';
+                
+                if (filter === 'all') {
+                    post.style.display = 'block';
+                } else if (filter === 'answered' && isAnswered) {
+                    post.style.display = 'block';
+                } else if (filter === 'unanswered' && !isAnswered) {
+                    post.style.display = 'block';
+                } else {
+                    post.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

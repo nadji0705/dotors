@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}إنشاء حساب جديد{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2><i class="fas fa-user-plus"></i> إنشاء حساب جديد</h2>
+            <p>انضم إلى منصتنا الطبية المتخصصة</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="username"><i class="fas fa-user"></i> اسم المستخدم *</label>
+                    <input type="text" id="username" name="username" required placeholder="أدخل اسم المستخدم">
+                </div>
+                
+                <div class="form-group">
+                    <label for="first_name"><i class="fas fa-id-card"></i> الاسم الأول *</label>
+                    <input type="text" id="first_name" name="first_name" required placeholder="أدخل اسمك الأول">
+                </div>
+                
+                <div class="form-group">
+                    <label for="last_name"><i class="fas fa-id-card"></i> اللقب *</label>
+                    <input type="text" id="last_name" name="last_name" required placeholder="أدخل لقبك">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني *</label>
+                    <input type="email" id="email" name="email" required placeholder="example@hospital.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone"><i class="fas fa-phone"></i> رقم الهاتف *</label>
+                    <input type="tel" id="phone" name="phone" required placeholder="05XXXXXXXX">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="gender"><i class="fas fa-venus-mars"></i> الجنس *</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="male" required>
+                            <span class="radio-custom"></span>
+                            ذكر
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="gender" value="female" required>
+                            <span class="radio-custom"></span>
+                            أنثى
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role"><i class="fas fa-user-md"></i> الدور الوظيفي *</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="role" value="doctor" required>
+                            <span class="radio-custom"></span>
+                            طبيب
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="role" value="nurse" required>
+                            <span class="radio-custom"></span>
+                           تقني الأشعة
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> كلمة المرور *</label>
+                <input type="password" id="password" name="password" required placeholder="أدخل كلمة مرور قوية">
+                <small class="form-hint">يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password"><i class="fas fa-lock"></i> تأكيد كلمة المرور *</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="أعد إدخال كلمة المرور">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-user-plus"></i> إنشاء الحساب
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>لديك حساب بالفعل؟ <a href="{{ url_for('login') }}">سجل الدخول هنا</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.auth-form');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    
+    form.addEventListener('submit', function(e) {
+        if (password.value !== confirmPassword.value) {
+            e.preventDefault();
+            alert('كلمة المرور غير متطابقة. يرجى التأكد من تطابق كلمتي المرور.');
+            confirmPassword.focus();
+        }
+        
+        if (password.value.length < 8) {
+            e.preventDefault();
+            alert('كلمة المرور يجب أن تكون 8 أحرف على الأقل.');
+            password.focus();
+        }
+    });
+});
+</script>
+{% endblock %}

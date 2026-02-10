@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}تفاصيل الاستفسار{% endblock %}
+
+{% block content %}
+<div class="post-detail-container">
+    <a href="{% if session.role == 'doctor' %}{{ url_for('doctor_dashboard') }}{% else %}{{ url_for('nurse_dashboard') }}{% endif %}" class="back-link">
+        <i class="fas fa-arrow-right"></i> العودة للوحة التحكم
+    </a>
+    
+    <div class="post-detail">
+        <div class="post-header">
+            <div class="post-title-section">
+                <h1>{{ post.title }}</h1>
+                <div class="post-meta">
+                    <span class="post-author">
+                        <i class="far fa-user"></i> {{ post.author.first_name }} {{ post.author.last_name }}
+                    </span>
+                    <span class="post-date">
+                        <i class="far fa-calendar"></i> {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </span>
+                    <span class="post-category">{{ post.category }}</span>
+                    <span class="post-urgency urgency-{{ post.urgency }}">{{ post.urgency }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="post-content-section">
+            <h3><i class="fas fa-clipboard"></i> تفاصيل الاستفسار</h3>
+            <div class="post-content">
+                {{ post.content|replace('\n', '<br>')|safe }}
+            </div>
+        </div>
+        
+        {% if session.role == 'doctor' %}
+       <div class="reply-form-section">
+    <h3><i class="fas fa-reply"></i> إضافة رد</h3>
+    <form id="replyForm" class="reply-form">
+        <input type="hidden" name="post_id" value="{{ post.id }}">
+        
+        <!-- قسم القوائم المنسدلة للفحوصات -->
+        <div class="form-section">
+            <h4><i class="fas fa-clipboard-list"></i> تحديد الفحوصات المطلوبة</h4>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="protocol"><i class="fas fa-tags"></i> نوع البروتوكول *</label>
+                    <select id="protocol" name="protocol" class="form-select" required>
+                        <option value="">اختر نوع البروتوكول</option>
+                        {% for category in medical_categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="examination"><i class="fas fa-search"></i> نوع الفحص *</label>
+                    <select id="examination" name="examination" class="form-select" required disabled>
+                        <option value="">اختر نوع الفحص</option>
+                        <!-- الخيارات سيتم ملؤها بالجافاسكريبت -->
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="replyContent"><i class="fas fa-comment-medical"></i> الرد *</label>
+            <textarea id="replyContent" name="content" rows="4" required placeholder="اكتب ردك على الاستفسار..."></textarea>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="diagnosis"><i class="fas fa-stethoscope"></i> التشخيص المقترح</label>
+                <textarea id="diagnosis" name="diagnosis" rows="3" placeholder="التشخيص المحتمل للحالة..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="treatment"><i class="fas fa-prescription-bottle"></i> خطة العلاج</label>
+                <textarea id="treatment" name="treatment" rows="3" placeholder="الإجراءات والعلاجات المقترحة..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="recommendations"><i class="fas fa-lightbulb"></i> توصيات إضافية</label>
+                <textarea id="recommendations" name="recommendations" rows="3" placeholder="توصيات للمتابعة والرعاية..."></textarea>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i> إرسال الرد
+        </button>
+    </form>
+</div>
+        {% endif %}
+        
+      <div class="replies-section">
+    <h3><i class="fas fa-comments"></i> الردود ({{ post.replies|length }})</h3>
+    
+    {% if post.replies %}
+        <div class="replies-list">
+            {% for reply in post.replies|sort(attribute='created_at', reverse=True) %}
+            <div class="reply-item">
+                <div class="reply-header">
+                    <div class="reply-author">
+                        <i class="fas fa-user-md"></i>
+                        <strong>{{ reply.doctor.first_name }} {{ reply.doctor.last_name }}</strong>
+                    </div>
+                    <div class="reply-date">
+                        <i class="far fa-clock"></i> {{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                </div>
+                
+                <div class="reply-content">
+                    <p>{{ reply.content }}</p>
+                </div>
+                
+                {% if reply.diagnosis or reply.medical_proces or reply.medical_cate %}
+                <div class="reply-details">
+                    <!-- المعلومات الإجرائية والتصنيف الطبي -->
+                    {% if reply.medical_proces or reply.medical_cate %}
+                    <div class="detail-section">
+                        <h4><i class="fas fa-file-medical-alt"></i> المعلومات الطبية</h4>
+                        <div class="medical-info-grid">
+                            {% if reply.medical_proces %}
+                            <div class="medical-info-item">
+                                <span class="info-label">الإجراء الطبي:</span>
+                                <span class="info-value">{{ reply.medical_proces }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if reply.medical_cate %}
+                            <div class="medical-info-item">
+                                <span class="info-label">التصنيف الطبي:</span>
+                                <span class="info-value">{{ reply.medical_cate }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if reply.diagnosis %}
+                    <div class="detail-section">
+                        <h4><i class="fas fa-stethoscope"></i> التشخيص</h4>
+                        <p>{{ reply.diagnosis }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if reply.treatment %}
+                    <div class="detail-section">
+                        <h4><i class="fas fa-prescription-bottle"></i> خطة العلاج</h4>
+                        <p>{{ reply.treatment }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if reply.recommendations %}
+                    <div class="detail-section">
+                        <h4><i class="fas fa-lightbulb"></i> توصيات إضافية</h4>
+                        <p>{{ reply.recommendations }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="far fa-comment-slash"></i>
+            <p>لا توجد ردود على هذا الاستفسار حتى الآن</p>
+            {% if session.role == 'nurse' %}
+            <p class="empty-state-note">سيظهر هنا ردود الأطباء عندما يقومون بالرد على استفسارك</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if session.role == 'doctor' %}
+    const replyForm = document.getElementById('replyForm');
+    
+    replyForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetch('/add_reply', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('تم إرسال الرد بنجاح!');
+                // إعادة تحميل الصفحة لعرض الرد الجديد
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('حدث خطأ: ' + result.error);
+            }
+        } catch (error) {
+            alert('حدث خطأ في الشبكة. حاول مرة أخرى.');
+        }
+    });
+    {% endif %}
+    
+    // تحديث الردود تلقائياً كل 30 ثانية (للممرضين)
+    {% if session.role == 'nurse' and post.replies|length == 0 %}
+    let checkInterval = setInterval(async () => {
+        try {
+            const response = await fetch('/api/post/{{ post.id }}/replies');
+            const replies = await response.json();
+            
+            if (replies.length > 0) {
+                clearInterval(checkInterval);
+                alert('تمت إضافة رد جديد على استفسارك!');
+                location.reload();
+            }
+        } catch (error) {
+            console.error('خطأ في التحقق من الردود:', error);
+        }
+    }, 30000); // كل 30 ثانية
+    
+    // تنظيف الـ interval عند مغادرة الصفحة
+    window.addEventListener('beforeunload', () => {
+        clearInterval(checkInterval);
+    });
+    {% endif %}
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// البيانات التي تأتي من Flask
+const medicalData = {
+    {% for category, procedures in medical_procedures.items() %}
+    "{{ category }}": {{ procedures|tojson }},
+    {% endfor %}
+};
+
+// عناصر DOM
+const protocolSelect = document.getElementById('protocol');
+const examinationSelect = document.getElementById('examination');
+
+// حدث عند تغيير البروتوكول
+protocolSelect.addEventListener('change', function() {
+    const selectedProtocol = this.value;
+    
+    // تفريغ القائمة الثانية
+    examinationSelect.innerHTML = '<option value="">اختر نوع الفحص</option>';
+    
+    if (selectedProtocol) {
+        // تفعيل القائمة الثانية
+        examinationSelect.disabled = false;
+        
+        // إضافة الخيارات المناسبة
+        const procedures = medicalData[selectedProtocol];
+        procedures.forEach(procedure => {
+            const option = document.createElement('option');
+            option.value = procedure;
+            option.textContent = procedure;
+            examinationSelect.appendChild(option);
+        });
+    } else {
+        // تعطيل القائمة الثانية إذا لم يتم اختيار بروتوكول
+        examinationSelect.disabled = true;
+    }
+});
+
+// إرسال النموذج
+document.getElementById('replyForm').addEventListener('submit', function(e) {
+    const protocol = document.getElementById('protocol').value;
+    const examination = document.getElementById('examination').value;
+    
+    if (!protocol || !examination) {
+        e.preventDefault();
+        alert('الرجاء اختيار البروتوكول والفحص المطلوب');
+    }
+});
+
+</script>
+{% endblock %}
