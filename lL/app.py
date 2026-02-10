@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -9,16 +8,10 @@ import pydicom
 import nibabel as nib
 import numpy as np
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'medical-secret-key-2024')
-
-# PostgreSQL connection string for Supabase
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:VNXNXgyol9sBaB8H@db.licpqoqojiskvrvzqtxx.supabase.co:5432/postgres')
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SECRET_KEY'] = 'medical-secret-key-2024'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///medical_platform.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
@@ -36,8 +29,6 @@ ALLOWED_EXTENSIONS = {
 
 # النماذج
 class User(db.Model):
-    __tablename__ = 'users'
-    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
@@ -60,8 +51,6 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
 class MedicalImage(db.Model):
-    __tablename__ = 'medical_images'
-    
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     original_filename = db.Column(db.String(255), nullable=False)
@@ -69,8 +58,8 @@ class MedicalImage(db.Model):
     file_size = db.Column(db.Integer, nullable=False)
     preview_filename = db.Column(db.String(255))  # اسم ملف المعاينة PNG
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
     def to_dict(self):
         return {
@@ -85,41 +74,45 @@ class MedicalImage(db.Model):
         }
 
 class Post(db.Model):
-    __tablename__ = 'posts'
-    
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     urgency = db.Column(db.String(20), default='normal')  # low, normal, high, critical
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
     # العلاقات
     replies = db.relationship('Reply', backref='post', lazy=True, cascade="all, delete-orphan")
     medical_images = db.relationship('MedicalImage', backref='post', lazy=True, cascade="all, delete-orphan")
 
 class Reply(db.Model):
-    __tablename__ = 'replies'
-    
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     diagnosis = db.Column(db.Text)
     treatment = db.Column(db.Text)
     recommendations = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    medical_proces = db.Column(db.String(50), nullable=False)
-    medical_cate = db.Column(db.String(50), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    medical_proces=db.Column(db.String(50), nullable=False)
+    medical_cate=db.Column(db.String(50), nullable=False)
 
-# إنشاء الجداول إذا لم تكن موجودة
+# إنشاء الجداول
 with app.app_context():
     db.create_all()
 
 # دوال مساعدة لرفع الملفات
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+
+
+
+
+
+
 
 def convert_to_preview(file_path, extension, original_filename):
     """تحويل ملفات DICOM/NIFTI إلى PNG للعرض"""
@@ -186,6 +179,14 @@ def convert_to_preview(file_path, extension, original_filename):
     
     return None
 
+
+
+
+
+
+
+
+
 medical_procedures = {
     "perfusion": ["body perfusion", "brain perfusion"],
     "CTA": ["body CTA", "Limbs CTA", "neuro CTA"],
@@ -198,6 +199,7 @@ medical_procedures = {
     "neck": ["C-Spine DT", "Neck Axial", "Neck Helical", "Neck Contrast"],
     "head": ["Head axial", "head helical", "dental helical", "inner ear helical", "inner ear HR", "sinus helical", "head contrast"]
 }
+
 
 def save_uploaded_file(file, post_id, user_id):
     if file.filename == '':
@@ -342,6 +344,9 @@ def doctor_dashboard():
     
     # الحصول على جميع منشورات الممرضين
     posts = Post.query.order_by(Post.created_at.desc()).all()
+
+
+ 
     
     return render_template('doctor_dashboard.html', posts=posts)
 
@@ -542,4 +547,4 @@ def view_medical_image(image_id):
     return render_template('view_image.html', image=medical_image)
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000,debug=True)
+    app.run(debug=True)
